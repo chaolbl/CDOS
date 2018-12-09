@@ -1,0 +1,181 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts}
+
+
+
+\newcommand{\eq}[1]{\begin{equation}\label{#1}}
+\newcommand{\en}{\end{equation}}
+
+\newcommand{\beeq}[1]{\begin{equation}\label{#1}}
+\newcommand{\eneq}{\end{equation}}
+\newcommand{\wt}{\widetilde}
+
+\title{Methods for Improving Density of States Estimation}
+\author{ }
+\date{December 2018}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+The density of states or spectral density of an $n\times n$ Hermitian matrix $A$ is formally defined as 
+\begin{equation}
+d(t) = \sum_{i=1}^n \delta(t-\lambda_i),
+\label{eq:dos}
+\end{equation}
+where $\lambda_i$ is the $i$th eigenvalue of $A$, $\delta(\lambda)$ denotes the Dirac delta distribution that satisfies
+\[
+\delta(t)=\left\{ 
+\begin{array}{cc}
+1 & \mathrm{if} \: t = 0, \\
+0 & \mathrm{otherwise.}
+\end{array}
+\right.
+\]
+Associated with each DOS $s(\lambda)$ is a cumulative DOS (CDOS) defined as
+\begin{equation}
+    c(t) = \int_{\infty}^t d(s) ds.
+\end{equation}
+Note that $c(t)$ is a monotonically non-decreasing function. It is well defined for any $t \in \mathbb{R}$. In particular, $c(t_i)$ gives the total number of eigenvalues less than or equal to $t_i$ for any $i=1,2,...n$.
+
+The use of DOS as a way to characterize certain properties of physical systems described by a matrix operator is quite common in physics and chemistry.  The DOS gives a global view of how eigenvalues of a Hermitian matrix are distributed. The knowledge of eigenvalue distribution is important for a variety of numerical methods such as iterative methods for solving linear systems and eigenvalue problems.
+
+A complete determination of the DOS \eqref{eq:dos} requires knowing all eigenvalues of $A$, which is usually costly, especially for matrices of large dimensions.  However, there are methods that can be used to obtain approximations to the DOS without explicitly computing all eigenvalues of $A$.  These methods which include the Kernel polynomial method (KPM) \cite{kpmsurvey2006} and its variations and the Lanczos method \cite{Lanczos1988} have been carefully reviewed in \cite{LSY}. 
+
+These methods essentially construct approximations to the Dirac-$\delta$ distributions by using orthogonal polynomials, e.g., the Chebyshev polynomials and evaluate and stochastic method to estimate the trace of a matrix function.
+
+Once the DOS is obtained, we can then integrate $d(t)$ numerically to obtain the CDOS.  This is the approach taken in \cite{LSY} and other references.  However, because CDOS is a monotonic function and generally more smooth (because it originates from the integral of another function), it may be easier to construct an approximation to CDOS $c(t)$ first and then obtain the DOS via numerical differentiation.  Furthermore, CDOS is useful also.... We will present and compare a number of algorithms for constructing the CDOS directly. Also, it is not so easy to quantify the approximation error of DOS directly, whereas it is relatively easy to quantify the error in CDOS.
+
+Because the Dirac-$\delta$ distribution is discontinuous and nonsmooth, it is conceivable that it may be helpful to regularize it first by a smooth function before its approximation is constructed. Regularization is also meaningful in real applications because the DOS of a physical system described by a Hamiltonian that can be measured in an experiment is often regularized by physical processes such as the lifetime of electron excitation or measurement uncertainties.
+
+Commonly used regularization functions are Gaussians of the form
+\begin{equation}
+    G(t) = e^{-\frac{t^2}{\sigma^2}}
+    \label{eq:gauss}
+\end{equation}
+or Lorentzians of the form
+\begin{equation}
+    L(t) = \mathrm{Im}\left[\frac{1}{t - i\eta}\right],
+    \label{eq:lorentz}
+\end{equation}
+where $\mathrm{Im}(a)$ denotes the imaginary part of the complex number $a$.
+Both regularization functions (of the Dirac-$\delta$) contain regularization parameters $\sigma$ and $\eta$ that should be chosen properly.  In the numerical examples presented in \cite{LSY}, these parameters chosen manually. A single $\sigma$ or $\eta$ values is used for the entire spectrum. In this paper, we show that it is much better to choose these parameters adaptively depending on the where $t$ is within the spectrum. We present a few methods for choosing these parameters.
+
+
+\section{DOS approximation}
+The KPM method constructs an approximation to the exact DOS of a matrix
+$A$ by formally expanding Dirac $\delta$-functions in terms of Chebyshev
+polynomials $T_{k}(t)=\cos(k\arccos(t))$.
+For simplicity, we assume that the eigenvalues are in the interval $[-1,
+1]$.   Following the Silver-R\"oder paper~\cite{SilverRoder1994},  
+we expand the modified distribution $\hat{d}(t)=\sqrt{1-t^2}d(t)$ as
+\beeq{eq:exp1}
+\hat d(t)  = \sum_{k=0}^\infty  \mu_k T_k(t).
+\end{equation}
+Eq.~\eqref{eq:exp1} should be understood in the sense of
+distributions, i.e. for any test function $g\in \mathcal{S}$,
+\[
+\int_{-1}^{1}\hat{d}(t) g(t) \ dt = \int_{-1}^{1}
+\sum_{k=0}^{\infty} \mu_{k} T_{k}(t) g(t) \ dt.
+\]
+It can be shown that the coefficients of the expansion can be evaluated as
+\begin{equation} 
+\mu_k = \frac{2-\delta_{k0}}{n\pi}  \sum_{j=1}^n  T_k(\lambda_j), 
+\label{eq:expmu} 
+\end{equation}
+where $\delta_{ij}$ is the Kronecker $\delta$ symbol. Clearly
+ $2 - \delta_{k0}$ is 1 when $k=0$ and 2 otherwise.
+
+Thus, apart from the scaling factor $(2-\delta_{k0})/(n\pi)$,
+ $\mu_k$ is  the trace of $T_k(A)$, which can be approximated by evaluating 
+an ensemble average of $v^H T_k(A) v$ for a sequence of random vectors $v$'s with
+each component of $v$ obtained independently from a normal
+distribution with zero mean and unit standard deviation.  These coefficients can be
+evaluated recursively by making use of the recursive definition of the Chebyshev polynomial.  As a result, the DOS $d$ is approximated by:
+\beeq{eq:tdosFinal}
+\wt{d}_M(t) =
+\frac{1}{\sqrt{1-t^2}} \sum_{k=0}^M \mu_k T_k (t) .
+\eneq
+
+The polynomial basis functions used in the expansion \eqref{eq:expl} are not limited to Chebyshev polynomials. Other types of orthogonal polynomials such as Gauss-Legendre polynomials can be used. 
+
+It is also possible to regularize the DOS first by replacing the Dirac-$\delta$ distribution in \eqref{eq:dos} with Gaussian's or Lorentzian first before expanding the regularized DOS in orthogonal polynomials. Analytically formula for the expansion coefficients can be derived as shown in~\cite{LSY}.
+
+One of the potential pitfall of the DOS approximation produced by KPM is that the approximation may not be strictly nonnegative, which is a property satisfied by the DOS.
+
+Another way to approximate DOS, which preserves the nonnegativity of the DOS, is to 
+use the Lanczos algorithm. For a given starting vector $v_0$, an $M$-step Lanczos procedure for a
+real symmetric matrix $A$ can be succinctly described by
+\begin{equation}
+  AV_M = V_M T_M + f_M e_M^T, \ \ V_M^TV_M = I, \ \ V_M^Tf_M = 0.
+  \label{eq:lanfact}
+\end{equation}
+Here $T_M$ is an $M\times M$ tridiagonal matrix, $V_{M}$ is an
+$n\times M$ matrix, and $I_{M}$ is an $M\times M$
+identity matrix.
+If $(\theta_{k},y_{k})$, $k=0,1,2,\ldots,M$ are eigenpairs of the
+tridiagonal matrix $T_M$, and $\tau_{k}$ is the first
+entry of $y_{k}$, then the following distribution function defined by
+\begin{equation}
+        \sum_{k=0}^M \tau_{k}^2 \delta(t-\theta_k),
+\label{eq:landist}
+\end{equation}
+serves as an approximation to the weighted spectral density function
+$\phi_{v_0}(t) = \sum_{i=1}^n \beta_i \delta(t-\lambda_i)$, where $\beta_i$'s are the expansion coefficients of $v_0$ in  terms of eigenvectors of $A$, in the sense that
+\begin{equation}
+\sum_{j=1}^n \beta_{j}^2 p_q(\lambda_j) = \sum_{k=0}^M \tau_{k}^2 
+p_q(\theta_k), 
+\label{eq:tauexpand}
+\end{equation}
+
+By repeating the Lanczos process with multiple randomly generated starting
+vectors $v^{(l)}_0$, $l = 1,2,\ldots,\nvec$, that satisfy the
+conditions given by~\eqref{eqn:stochasticcondition}, we obtain an approximation to \eqref{eq:dos} of the form
+\begin{equation}
+\wt{d}_M(t) = \frac{1}{\nvec} \sum_{l=1}^{\nvec}\left(
+\frac{1}{n} \sum_{k=0}^{M}  \left(\tau_{k}^{(l)}\right)^2
+\delta(t-\theta_{k}^{(l)}) \right)
+\label{eq:lanapprox}
+\end{equation}
+
+Since \eqref{eq:lanapprox} has far fewer peaks than $d(t)$,
+when $M$ is small, a direct comparison of \eqref{eq:lanapprox} with
+$d(t)$ is not very meaningful.  However, when $d(t)$ is
+regularized by replacing $\delta(t-\lambda_i)$ with $G_\sigma(t-\lambda_i)$,
+we can replace $\delta(t-\theta_k^{(l)})$ in~\eqref{eq:lanapprox} with a
+Gaussian centered at the $\theta_k^{(l)}$ to yield a regularized DOS
+approximation, i.e., we define the approximate DOS as
+\begin{equation}
+        \wt{d}_M(t) = \frac{1}{\nvec}\sum_{l=1}^{\nvec}\left(\frac{1}{n}
+        \sum_{k=0}^{M} \left(\tau_{k}^{(l)}\right)^2
+        \gsz(t-\theta_{k}^{(l)})\right).
+        \label{eqn:landos}
+\end{equation}
+This regularization is well justified because in the limit of $M = n$,
+all Ritz values are the eigenvalues, and $\tphi_{\sigma}(t)$ is exactly the
+same as the regularized DOS $\phi_{\sigma}(t)$ for the same $\sigma$.
+We will refer to the method that constructs the DOS approximation from
+Ritz values obtained from an $M$-step Lanczos iteration as the Lanczos
+method in the following discussion.
+
+\section{CDOS Approximation}
+The error for CDOS is more quantifiable.
+\subsection{Integrating Gaussian analytically}
+\subsection{Interpolating step functions by spline}
+\subsection{Interpolating step functions by GP}
+
+\section{The choice of regularization parameter}
+\subsection{Uniform}
+Chosen the median gap
+\subsection{Variable $\sigma$ based on local gap}
+\subsection{GP based approach}
+
+\section{Numerical examples}
+\subsection{CDOS approximation by different methods}
+\subsection{Compare different ways of choosing Gaussian broadening factor}
+\subsection{Approximating DOS directly vs differentiate CDOS}
+\bibliographystyle{plain}
+\bibliography{reference}
+\end{document}
